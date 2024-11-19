@@ -28,14 +28,15 @@ class StickyNotesApp:
         file_menu = tk.Menu(menubar, tearoff=0)
         file_menu.add_command(label="New Note", command=self.create_note, accelerator="Ctrl+N")
         file_menu.add_command(label="List Notes", command=self.list_notes, accelerator="Ctrl+L")
-        file_menu.add_command(label="Exit", command=self.exit_app)
+        file_menu.add_command(label="Exit", command=self.exit_app, accelerator="Ctrl+X")
         menubar.add_cascade(label="File", menu=file_menu)
         
-        # Key bindings
+        # top-level key bindings
         self.root.bind("<Control-n>", lambda event: self.create_note())
         self.root.bind("<Control-l>", lambda event: self.list_notes())
-        
-        # Load existing notes
+        self.root.bind("<Control-x>", lambda event: self.exit_app())
+
+        # Load existing notes - included as a useful illustration
         # self.load_notes()
     
     def load_notes(self):
@@ -65,9 +66,14 @@ class StickyNotesApp:
         note_menu.add_command(label="Export to File", command=lambda: self.export_to_file(note_id, text_area))
         note_menu.add_command(label="Delete Note", command=lambda: self.delete_note(note_id, note_window))
         
-        # Right-click to show the context menu
-        text_area.bind("<Button-3>", lambda event: self.show_context_menu(event, note_menu))
-        
+        # Press <Cntrl>-m to show the context menu and other key bindings
+        text_area.bind("<Control-m>", lambda event: self.show_context_menu(event, note_menu))
+
+        text_area.bind("<Control-s>", lambda event: self.save_note(note_id, text_area))
+        text_area.bind("<Control-d>", lambda event: self.delete_note(note_id, text_area))
+        text_area.bind("<Control-c>", lambda event: self.change_color(note_id, text_area))
+        text_area.bind("<Control-x>", lambda event: self.export_to_file(note_id, text_area))
+
         # Save the note window and its content in the dictionary
         self.notes[note_id] = {"window": note_window, "content": text_area, "color": color}
     
@@ -99,6 +105,7 @@ class StickyNotesApp:
     
     def change_color(self, note_id, text_area):
         """Change the background color of a note."""
+        print("changing color")
         color = colorchooser.askcolor(title="Choose Note Color")[1]
         if color:
             text_area.config(bg=color)
