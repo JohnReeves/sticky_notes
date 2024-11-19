@@ -31,7 +31,7 @@ class StickyNotesApp:
         menubar.add_cascade(label="File", menu=file_menu)
         
         # Load existing notes
-        # self.load_notes()
+        self.load_notes()
     
     def load_notes(self):
         # Retrieve notes from the database and create sticky notes for each
@@ -46,9 +46,10 @@ class StickyNotesApp:
         note_window.geometry("200x200")
         note_window.resizable(True, True)  # Allow resizing
         
+        # Create the text widget
         text_area = tk.Text(note_window, wrap=tk.WORD, bg=color)
         text_area.insert("1.0", content)
-        text_area.pack(expand=True, fill=tk.BOTH)
+        text_area.pack(expand=True, fill=tk.BOTH)  # Ensure it fills the window
         
         # Bind the text widget to save changes automatically
         text_area.bind("<KeyRelease>", lambda event: self.save_note(note_id, text_area))
