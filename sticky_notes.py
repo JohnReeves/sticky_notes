@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import simpledialog, messagebox, filedialog, colorchooser
+from tkinter import filedialog, messagebox, colorchooser
 import sqlite3
 
 class StickyNotesApp:
@@ -50,18 +50,24 @@ class StickyNotesApp:
         text_area.insert("1.0", content)
         text_area.pack(expand=True, fill=tk.BOTH)
         
-        # Menu for each note
+        # Bind the text widget to save changes automatically
+        text_area.bind("<KeyRelease>", lambda event: self.save_note(note_id, text_area))
+        
+        # Context menu
         note_menu = tk.Menu(note_window, tearoff=0)
-        note_window.config(menu=note_menu)
         note_menu.add_command(label="Change Color", command=lambda: self.change_color(note_id, text_area))
         note_menu.add_command(label="Export to File", command=lambda: self.export_to_file(note_id, text_area))
         note_menu.add_command(label="Delete Note", command=lambda: self.delete_note(note_id, note_window))
         
+        # Right-click to show the context menu
+        text_area.bind("<Button-3>", lambda event: self.show_context_menu(event, note_menu))
+        
         # Save the note window and its content in the dictionary
         self.notes[note_id] = {"window": note_window, "content": text_area, "color": color}
-        
-        # Bind the text widget to save changes automatically
-        text_area.bind("<KeyRelease>", lambda event: self.save_note(note_id, text_area))
+    
+    def show_context_menu(self, event, menu):
+        # Show context menu at the mouse pointer
+        menu.tk_popup(event.x_root, event.y_root)
     
     def create_note(self):
         # Add a new note to the database
