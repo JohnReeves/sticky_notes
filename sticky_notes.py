@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import simpledialog, messagebox
+from tkinter import simpledialog, messagebox, filedialog, colorchooser
 import sqlite3
 
 class StickyNotesApp:
@@ -14,7 +14,8 @@ class StickyNotesApp:
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS notes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                content TEXT
+                content TEXT,
+                color TEXT
             )
         """)
         self.conn.commit()
@@ -25,41 +26,46 @@ class StickyNotesApp:
         
         file_menu = tk.Menu(menubar, tearoff=0)
         file_menu.add_command(label="New Note", command=self.create_note)
+        file_menu.add_command(label="List Notes", command=self.list_notes)
         file_menu.add_command(label="Exit", command=self.exit_app)
         menubar.add_cascade(label="File", menu=file_menu)
         
         # Load existing notes
-        self.load_notes()
+        # self.load_notes()
     
     def load_notes(self):
         # Retrieve notes from the database and create sticky notes for each
-        self.cursor.execute("SELECT id, content FROM notes")
-        for note_id, content in self.cursor.fetchall():
-            self.display_note(note_id, content)
+        self.cursor.execute("SELECT id, content, color FROM notes")
+        for note_id, content, color in self.cursor.fetchall():
+            self.display_note(note_id, content, color)
     
-    def display_note(self, note_id, content=""):
+    def display_note(self, note_id, content="", color="yellow"):
         # Create a sticky note window
         note_window = tk.Toplevel(self.root)
         note_window.title(f"Note {note_id}")
         note_window.geometry("200x200")
+        note_window.resizable(True, True)  # Allow resizing
         
-        text_area = tk.Text(note_window, wrap=tk.WORD)
+        text_area = tk.Text(note_window, wrap=tk.WORD, bg=color)
         text_area.insert("1.0", content)
         text_area.pack(expand=True, fill=tk.BOTH)
         
-        close_button = tk.Button(note_window, text="Delete Note", 
-                                 command=lambda: self.delete_note(note_id, note_window))
-        close_button.pack(fill=tk.X)
+        # Menu for each note
+        note_menu = tk.Menu(note_window, tearoff=0)
+        note_window.config(menu=note_menu)
+        note_menu.add_command(label="Change Color", command=lambda: self.change_color(note_id, text_area))
+        note_menu.add_command(label="Export to File", command=lambda: self.export_to_file(note_id, text_area))
+        note_menu.add_command(label="Delete Note", command=lambda: self.delete_note(note_id, note_window))
         
         # Save the note window and its content in the dictionary
-        self.notes[note_id] = {"window": note_window, "content": text_area}
+        self.notes[note_id] = {"window": note_window, "content": text_area, "color": color}
         
         # Bind the text widget to save changes automatically
         text_area.bind("<KeyRelease>", lambda event: self.save_note(note_id, text_area))
     
     def create_note(self):
         # Add a new note to the database
-        self.cursor.execute("INSERT INTO notes (content) VALUES ('')")
+        self.cursor.execute("INSERT INTO notes (content, color) VALUES ('', 'yellow')")
         self.conn.commit()
         note_id = self.cursor.lastrowid
         self.display_note(note_id)
@@ -67,7 +73,8 @@ class StickyNotesApp:
     def save_note(self, note_id, text_area):
         # Update the note content in the database
         content = text_area.get("1.0", tk.END).strip()
-        self.cursor.execute("UPDATE notes SET content = ? WHERE id = ?", (content, note_id))
+        color = text_area.cget("bg")
+        self.cursor.execute("UPDATE notes SET content = ?, color = ? WHERE id = ?", (content, color, note_id))
         self.conn.commit()
     
     def delete_note(self, note_id, note_window):
@@ -77,6 +84,49 @@ class StickyNotesApp:
             self.conn.commit()
             note_window.destroy()
             del self.notes[note_id]
+    
+    def change_color(self, note_id, text_area):
+        # Change the background color of a note
+        color = colorchooser.askcolor(title="Choose Note Color")[1]
+        if color:
+            text_area.config(bg=color)
+            self.save_note(note_id, text_area)
+    
+    def export_to_file(self, note_id, text_area):
+        # Export note content to a text file
+        content = text_area.get("1.0", tk.END).strip()
+        file_path = filedialog.asksaveasfilename(defaultextension=".txt",
+                                                 filetypes=[("Text Files", "*.txt")])
+        if file_path:
+            with open(file_path, "w") as file:
+                file.write(content)
+            messagebox.showinfo("Export Successful", f"Note {note_id} exported to {file_path}")
+    
+    def list_notes(self):
+        # List all notes in the database
+        list_window = tk.Toplevel(self.root)
+        list_window.title("List of Notes")
+        list_window.geometry("300x400")
+        
+        list_box = tk.Listbox(list_window)
+        list_box.pack(expand=True, fill=tk.BOTH)
+        
+        # Load notes into the listbox
+        self.cursor.execute("SELECT id, content FROM notes")
+        for note_id, content in self.cursor.fetchall():
+            preview = content[:30] + "..." if len(content) > 30 else content
+            list_box.insert(tk.END, f"Note {note_id}: {preview}")
+        
+        # Open selected note on double-click
+        def open_note(event):
+            selection = list_box.curselection()
+            if selection:
+                note_id = int(list_box.get(selection[0]).split()[1][:-1])
+                self.cursor.execute("SELECT content, color FROM notes WHERE id = ?", (note_id,))
+                content, color = self.cursor.fetchone()
+                self.display_note(note_id, content, color)
+        
+        list_box.bind("<Double-1>", open_note)
     
     def exit_app(self):
         # Close the database connection and exit the application
