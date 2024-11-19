@@ -36,7 +36,7 @@ class StickyNotesApp:
         self.root.bind("<Control-l>", lambda event: self.list_notes())
         
         # Load existing notes
-        self.load_notes()
+        # self.load_notes()
     
     def load_notes(self):
         """Load existing notes from the database and display them."""
