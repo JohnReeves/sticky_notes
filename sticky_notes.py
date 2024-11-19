@@ -26,24 +26,18 @@ class StickyNotesApp:
         root.config(menu=menubar)
         
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="New Note", command=self.create_note, accelerator="Ctrl+N")
-        file_menu.add_command(label="List Notes", command=self.list_notes, accelerator="Ctrl+L")
-        file_menu.add_command(label="Exit", command=self.exit_app, accelerator="Ctrl+X")
+        file_menu.add_command(label="New Note", command=self.create_note, accelerator="Ctrl+n")
+        file_menu.add_command(label="List Notes", command=self.list_notes, accelerator="Ctrl+l")
+        file_menu.add_command(label="Help", command=self.show_key_bindings, accelerator="Ctrl+/")
+        file_menu.add_command(label="Exit", command=self.exit_app, accelerator="Ctrl+x")
+
         menubar.add_cascade(label="File", menu=file_menu)
         
         # top-level key bindings
         self.root.bind("<Control-n>", lambda event: self.create_note())
         self.root.bind("<Control-l>", lambda event: self.list_notes())
         self.root.bind("<Control-x>", lambda event: self.exit_app())
-
-        # Load existing notes - included as a useful illustration
-        # self.load_notes()
-    
-    def load_notes(self):
-        """Load existing notes from the database and display them."""
-        self.cursor.execute("SELECT id, content, color FROM notes")
-        for note_id, content, color in self.cursor.fetchall():
-            self.display_note(note_id, content, color)
+        self.root.bind("Control-?", lambda event: self.show_key_bindings())
     
     def display_note(self, note_id, content="", color="yellow"):
         """Display a sticky note in a separate window."""
@@ -62,9 +56,12 @@ class StickyNotesApp:
         
         # Context menu
         note_menu = tk.Menu(note_window, tearoff=0)
-        note_menu.add_command(label="Change Color", command=lambda: self.change_color(note_id, text_area))
-        note_menu.add_command(label="Export to File", command=lambda: self.export_to_file(note_id, text_area))
-        note_menu.add_command(label="Delete Note", command=lambda: self.delete_note(note_id, note_window))
+
+        note_menu.add_command(label="Change Color", command=lambda: self.change_color(note_id, text_area), accelerator="Ctrl+c")
+        note_menu.add_command(label="Export to File", command=lambda: self.export_to_file(note_id, text_area), accelerator="Ctrl+x")
+        note_menu.add_command(label="Delete Note", command=lambda: self.delete_note(note_id, note_window), accelerator="Ctrl+d")
+        note_menu.add_command(label="Save Note", command=lambda: self.save_note(note_id, note_window), accelerator="Ctrl+s")
+        note_menu.add_command(label="Help", command=lambda: self.show_key_bindings(), accelerator="Ctrl+/")
         
         # Press <Cntrl>-m to show the context menu and other key bindings
         text_area.bind("<Control-m>", lambda event: self.show_context_menu(event, note_menu))
@@ -73,6 +70,8 @@ class StickyNotesApp:
         text_area.bind("<Control-d>", lambda event: self.delete_note(note_id, text_area))
         text_area.bind("<Control-c>", lambda event: self.change_color(note_id, text_area))
         text_area.bind("<Control-x>", lambda event: self.export_to_file(note_id, text_area))
+
+        text_area.bind("Control-?", lambda event: self.show_key_bindings())
 
         # Save the note window and its content in the dictionary
         self.notes[note_id] = {"window": note_window, "content": text_area, "color": color}
@@ -146,6 +145,36 @@ class StickyNotesApp:
         
         list_box.bind("<Double-1>", open_note)
     
+    def show_key_bindings(self):
+        """List the key bindings as a help message."""
+        help_window = tk.Toplevel(self.root)
+        help_window.title("List of Notes")
+        help_window.geometry("300x400")
+        
+        help_box = tk.Listbox(help_window)
+        help_box.pack(expand=True, fill=tk.BOTH)        
+
+        help_message="""
+       ~~ Help! ~~
+
+Key bindings for application control menu items
+<Ctrl>-n: Create a new note
+<Ctrl>-l: List all notes
+<Ctrl>-x: Exit the application
+
+Click the note to activate these commands
+<Ctrl>-s: Save the note
+<Ctrl>-d: Delete the note
+<Ctrl>-c: Change the color
+<Ctrl>-x: Export the note to a file
+<Ctrl>-m: Display the context menu
+
+Context menu access
+<Ctrl>-m: Context menu in a note
+        """
+        for lines in help_message.splitlines():
+            help_box.insert(tk.END, lines)
+
     def exit_app(self):
         """Close the database connection and exit the application."""
         self.conn.close()
